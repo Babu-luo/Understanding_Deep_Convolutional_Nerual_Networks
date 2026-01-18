@@ -1,4 +1,4 @@
-# Final_Project
+# Final_Project Understanding Deep Convolutional Neural Networks
 
 We choose ResNet as our basic model, adding a GAP layer and a fully connected layer to modify it as CAM
 
