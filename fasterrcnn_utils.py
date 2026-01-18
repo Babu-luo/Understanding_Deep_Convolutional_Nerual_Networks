@@ -52,8 +52,8 @@ def run_fasterrcnn_gradcam(args):
 
     # ===== Process PASCAL VOC 2007 dataset =====
     if args.det_img == "PASCAL VOC 2007":
-        tar_path = r'D:\ComputerVision\Final_Project\data\VOCtest_06-Nov-2007.tar'
-        output_dir = "fasterrcnn_gradcam_voc2007_results"
+        tar_path = r'.\data\VOCtest_06-Nov-2007.tar'
+        output_dir = "fasterrcnn_gradcam_voc2007_results_{target_layer}"
         os.makedirs(output_dir, exist_ok=True)
         
         print(f"Processing PASCAL VOC 2007 dataset from: {tar_path}")
