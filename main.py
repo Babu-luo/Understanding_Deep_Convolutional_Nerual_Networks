@@ -14,8 +14,6 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
-# Close oneDNN optimization
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 # ===== [ADDED FOR FASTER-RCNN] =====
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from fasterrcnn_gradcam import FasterRCNNGradCAM
@@ -291,7 +289,7 @@ def test(model, args):
     avg_auc = np.trapezoid(mean_curve, np.linspace(0, 1, len(mean_curve)))
     print(f"Average Insertion AUC: {avg_auc:.4f}")
 
-    # 平均曲线
+    # Average curve
     if deletion_curves and insertion_curves:
         d_all = np.array(deletion_curves)
         i_all = np.array(insertion_curves)
@@ -409,20 +407,17 @@ if __name__ == '__main__':
     # ===============================================
 
 
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --save_path ./checkpoints/resnet_best.pth --vis cam --hidden_strategy zero
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --save_path ./checkpoints/resnet_best.pth --vis cam --hidden_strategy gray
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --save_path ./checkpoints/resnet_best.pth --vis cam --hidden_strategy mean
+# generate 10 cam results
+# python main.py --mode test --save_path ./checkpoints/resnet_best.pth --vis cam --vis_num 10
 
+# generate 10 gradcam results
+# python main.py --mode test --save_path ./checkpoints/resnet_best.pth --vis gradcam --vis_num 10
 
-# D:\Anaconda_Envs\torch_env\python.exe main.py --run=train --model=cnn --optimizer=sgd --scheduler=cosine
-# D:\Anaconda_Envs\torch_env\python.exe main.py --run=train --model=fcnn --optimizer=sgd --scheduler=step
-# D:\Anaconda_Envs\torch_env\python.exe -m tensorboard.main --logdir=./logs_for_VGG
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode train --batch_size 64 --lr 0.01 --num_epochs 25 --save_path ./checkpoints/vgg_best.pth --log_dir ./logs
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --batch_size 64 --lr 0.005 --num_epochs 20 --save_path ./checkpoints/vgg_best_new.pth --log_dir ./logs_for_VGG
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode train --batch_size 64 --lr 0.005 --num_epochs 20 --save_path ./checkpoints/resnet_best.pth --log_dir ./logs_for_ResNet
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode train --batch_size 64 --lr 0.005 --num_epochs 20 --save_path ./checkpoints/resnext_best.pth --log_dir ./logs_for_ResNext
+# generate deletion metric and insertion metric via cam and mean strategy
+# python main.py --mode test --save_path ./checkpoints/resnet_best.pth --vis cam --vis_num 10 --hidden_strategy mean
 
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --save_path ./checkpoints/resnet_best.pth --vis cam --vis_num 10
+# test faster-rcnn gradcam on your own image test.png
+# python main.py --mode test --det_vis --det_img test.png
 
-# test faster-rcnn
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --det_vis --det_img test.png
+# generate faster-rcnn gradcam on PASCAL VOC dataset
+# python main.py --mode test --det_vis --det_img test.png
