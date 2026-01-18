@@ -16,12 +16,16 @@ VOC_CLASSES = [
 # ==================================
 
 
-def run_fasterrcnn_gradcam(args):
+def run_fasterrcnn_gradcam(args, target_layer="layer4"):
     """
     Run Faster R-CNN with Grad-CAM visualization.
     Supports both PASCAL VOC 2007 dataset and single image input.
+    
+    Args:
+        args: Arguments containing det_img path
+        target_layer: Which layer to hook ("layer2", "layer3", or "layer4")
     """
-    print("Running Faster-RCNN Grad-CAM...")
+    print(f"Running Faster-RCNN Grad-CAM (Layer: {target_layer})...")
 
     from torchvision.models.detection import fasterrcnn_resnet50_fpn
     from torchvision.models.detection import FasterRCNN_ResNet50_FPN_Weights
@@ -42,8 +46,8 @@ def run_fasterrcnn_gradcam(args):
     # Get model's class names (correct 91 categories)
     model_classes = weights.meta["categories"]
 
-    # ===== Init Grad-CAM wrapper =====
-    gradcam = FasterRCNNGradCAM(model)
+    # ===== Init Grad-CAM wrapper with selected layer =====
+    gradcam = FasterRCNNGradCAM(model, target_layer=target_layer)
 
     # ===== Image transform =====
     transform = transforms.Compose([
@@ -52,8 +56,9 @@ def run_fasterrcnn_gradcam(args):
 
     # ===== Process PASCAL VOC 2007 dataset =====
     if args.det_img == "PASCAL VOC 2007":
+        #tar_path = r'D:\ComputerVision\Final_Project\data\VOCtest_06-Nov-2007.tar'
         tar_path = r'.\data\VOCtest_06-Nov-2007.tar'
-        output_dir = "fasterrcnn_gradcam_voc2007_results_{target_layer}"
+        output_dir = f"fasterrcnn_gradcam_voc2007_results_{target_layer}"
         os.makedirs(output_dir, exist_ok=True)
         
         print(f"Processing PASCAL VOC 2007 dataset from: {tar_path}")
@@ -161,13 +166,12 @@ def run_fasterrcnn_gradcam(args):
         cam_overlay = overlay_gradcam_on_image(img_tensor, cam)
 
         # Detection visualization
-        # [FIX] Use model_classes instead of COCO_CLASSES
         det_img = draw_fasterrcnn_boxes(
             img_tensor,
             boxes,
             labels,
             scores,
-            model_classes  # <-- FIXED: was COCO_CLASSES
+            model_classes
         )
 
         # Combine three images
@@ -175,7 +179,7 @@ def run_fasterrcnn_gradcam(args):
 
         # Save result
         os.makedirs("fasterrcnn_gradcam_results", exist_ok=True)
-        save_path = os.path.join("fasterrcnn_gradcam_results", "result.png")
+        save_path = os.path.join("fasterrcnn_gradcam_results", f"result_{target_layer}.png")
         plt.imsave(save_path, final_img)
 
         print(f"Faster-RCNN Grad-CAM result saved to: {save_path}")
@@ -212,17 +216,6 @@ def map_to_voc_class(class_name):
 def filter_to_voc_classes(boxes, labels, scores, model_classes):
     """
     Filter detections to keep only classes that exist in PASCAL VOC.
-    
-    Args:
-        boxes: Tensor of bounding boxes
-        labels: Tensor of class labels (indices)
-        scores: Tensor of confidence scores
-        model_classes: List of class names from the model
-    
-    Returns:
-        filtered_boxes: Tensor of filtered bounding boxes
-        filtered_scores: Tensor of filtered scores
-        voc_class_names: List of VOC class name strings
     """
     filtered_boxes = []
     filtered_scores = []
@@ -250,16 +243,6 @@ def filter_to_voc_classes(boxes, labels, scores, model_classes):
 def draw_fasterrcnn_boxes_voc(image, boxes, voc_class_names, scores, score_thresh=0.5):
     """
     Draw bounding boxes with VOC class names on the image.
-    
-    Args:
-        image: torch.Tensor [3, H, W] (0~1)
-        boxes: Tensor of bounding boxes
-        voc_class_names: List of VOC class name strings
-        scores: Tensor of confidence scores
-        score_thresh: Minimum score threshold for display
-    
-    Returns:
-        np.ndarray [H, W, 3] with drawn boxes
     """
     # Tensor to numpy image
     img = image.permute(1, 2, 0).cpu().numpy()
@@ -309,17 +292,6 @@ def draw_fasterrcnn_boxes_voc(image, boxes, voc_class_names, scores, score_thres
 def draw_fasterrcnn_boxes(image, boxes, labels, scores, class_names, score_thresh=0.5):
     """
     Draw bounding boxes with class names on the image.
-    
-    Args:
-        image: torch.Tensor [3, H, W] (0~1)
-        boxes: Tensor of bounding boxes
-        labels: Tensor of class label indices
-        scores: Tensor of confidence scores
-        class_names: List of class names
-        score_thresh: Minimum score threshold for display
-    
-    Returns:
-        np.ndarray [H, W, 3] with drawn boxes
     """
     # Tensor to numpy image
     img = image.permute(1, 2, 0).cpu().numpy()
@@ -370,12 +342,6 @@ def draw_fasterrcnn_boxes(image, boxes, labels, scores, class_names, score_thres
 def combine_three_images(img1, img2, img3):
     """
     Combine three images horizontally.
-    
-    Args:
-        img1, img2, img3: [H, W, 3] float32 arrays
-    
-    Returns:
-        [H, 3W, 3] combined image
     """
     h = min(img1.shape[0], img2.shape[0], img3.shape[0])
     w = min(img1.shape[1], img2.shape[1], img3.shape[1])
@@ -390,14 +356,6 @@ def combine_three_images(img1, img2, img3):
 def overlay_gradcam_on_image(image, cam, alpha=0.4):
     """
     Overlay Grad-CAM heatmap on the original image.
-    
-    Args:
-        image: torch.Tensor [3, H, W] (0~1)
-        cam: torch.Tensor [H, W] (0~1)
-        alpha: Blending factor for overlay
-    
-    Returns:
-        np.ndarray [H, W, 3] with Grad-CAM overlay
     """
     img = image.permute(1, 2, 0).cpu().numpy()
     img = np.clip(img, 0, 1)

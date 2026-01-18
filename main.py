@@ -159,177 +159,179 @@ def test(model, args):
     # create dataloader
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size,
                             shuffle=False, num_workers=4, pin_memory=True)
-    # test
-    # correct = 0
-    # total = 0
-
-    # with torch.no_grad():
-    #     for data in test_loader:
-    #         # forward
-    #         inputs, labels = data[0].to(device), data[1].to(device)
-    #         outputs = model(inputs)
-
-    #         _, predicted = torch.max(outputs.data, 1)
-    #         total += labels.size(0)
-    #         correct += (predicted == labels).sum().item()
-
-    # acc = 100.0 * correct / total
-    # print("Test Accuracy: {:.2f}%".format(acc))
+    
     acc = 1.0
+    if args.vis == 'none':
+        test
+        correct = 0
+        total = 0
 
+        with torch.no_grad():
+            for data in test_loader:
+                # forward
+                inputs, labels = data[0].to(device), data[1].to(device)
+                outputs = model(inputs)
 
-    # # ===== [ADDED FOR CAM AND GRAD-CAM] =====
-    # global_sample_idx = 0 # control how many heatmaps have been generated
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
 
-    # os.makedirs("cam_results", exist_ok=True)
-    # cam_saved = 0
-    # max_cam_images = args.vis_num   # save only first vis_num CAMs
+        acc = 100.0 * correct / total
+        print("Test Accuracy: {:.2f}%".format(acc))
+        return acc
 
-    # os.makedirs("gradcam_results", exist_ok=True)
-    # gradcam_saved = 0
-    # max_gradcam_images = args.vis_num
+    if args.vis != 'none' and args.hidden_strategy == 'none':
+        # ===== [ADDED FOR CAM AND GRAD-CAM] =====
+        global_sample_idx = 0 # control how many heatmaps have been generated
 
-    # if args.vis != 'none':
-    #     for inputs, labels in test_loader:
-    #         inputs, labels = inputs.to(device), labels.to(device)
-    #         outputs = model(inputs)
-    #         _, predicted = torch.max(outputs, 1)
+        os.makedirs("cam_results", exist_ok=True)
+        cam_saved = 0
+        max_cam_images = args.vis_num   # save only first vis_num CAMs
 
-    #         for i in range(inputs.size(0)):
-    #             img = inputs[i]
-    #             pred = predicted[i].item()
-    #             gt = labels[i].item()
+        os.makedirs("gradcam_results", exist_ok=True)
+        gradcam_saved = 0
+        max_gradcam_images = args.vis_num
 
-    #             current_index = global_sample_idx
-    #             global_sample_idx += 1
+        if args.vis != 'none':
+            for inputs, labels in test_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                outputs = model(inputs)
+                _, predicted = torch.max(outputs, 1)
 
-    #             if args.vis == 'cam' and cam_saved < max_cam_images and current_index in {24,52,33,97}:
-    #                 cam = get_cam(model, img, pred)
-    #                 combined_img = create_combined_image(img, cam)
-    #                 plt.imsave(
-    #                     f"cam_results/cam_{cam_saved}_pred_{pred}_gt_{gt}.png",
-    #                     # cam.cpu().numpy(),
-    #                     # cmap='jet'
-    #                     combined_img
-    #                 )
-    #                 cam_saved += 1
+                for i in range(inputs.size(0)):
+                    img = inputs[i]
+                    pred = predicted[i].item()
+                    gt = labels[i].item()
 
-    #             if args.vis == 'gradcam' and gradcam_saved < max_gradcam_images:
-    #                 with torch.enable_grad():
-    #                     gradcam = get_gradcam(model, img, pred)
-    #                 combined_img = create_combined_image(img, gradcam)
-    #                 plt.imsave(
-    #                     f"gradcam_results/gradcam_{gradcam_saved}_pred_{pred}_gt_{gt}.png",
-    #                     # gradcam.detach().cpu().numpy(),
-    #                     # cmap='jet'
-    #                     combined_img
-    #                 )
-    #                 gradcam_saved += 1
+                    current_index = global_sample_idx
+                    global_sample_idx += 1
 
-    #             if cam_saved >= max_cam_images or gradcam_saved >= max_gradcam_images:
-    #                 return acc
-    # # ========================================
+                    if args.vis == 'cam' and cam_saved < max_cam_images and current_index in {24,52,33,97}:
+                        cam = get_cam(model, img, pred)
+                        combined_img = create_combined_image(img, cam)
+                        plt.imsave(
+                            f"cam_results/cam_{cam_saved}_pred_{pred}_gt_{gt}.png",
+                            # cam.cpu().numpy(),
+                            # cmap='jet'
+                            combined_img
+                        )
+                        cam_saved += 1
+
+                    if args.vis == 'gradcam' and gradcam_saved < max_gradcam_images:
+                        with torch.enable_grad():
+                            gradcam = get_gradcam(model, img, pred)
+                        combined_img = create_combined_image(img, gradcam)
+                        plt.imsave(
+                            f"gradcam_results/gradcam_{gradcam_saved}_pred_{pred}_gt_{gt}.png",
+                            # gradcam.detach().cpu().numpy(),
+                            # cmap='jet'
+                            combined_img
+                        )
+                        gradcam_saved += 1
+
+                    if cam_saved >= max_cam_images or gradcam_saved >= max_gradcam_images:
+                        return acc
+    # ========================================
 
 
     # ===== [QUANTITATIVE EVALUATION VISUALIZATION] =====
-    if args.vis != 'none':
-        deletion_curves = []
-        insertion_curves = []
-        num_eval_samples = 100
-        eval_count = 0
-        use_gradcam = False
-        if args.vis == 'gradcam':
-            use_gradcam = True
-        hidden_strategy = args.hidden_strategy
-        heatmap = None
+    deletion_curves = []
+    insertion_curves = []
+    num_eval_samples = 100
+    eval_count = 0
+    use_gradcam = False
+    if args.vis == 'gradcam':
+        use_gradcam = True
+    hidden_strategy = args.hidden_strategy
+    heatmap = None
 
-        for data in test_loader:
+    for data in test_loader:
+        if eval_count >= num_eval_samples:
+            break
+        inputs, labels = data[0].to(device), data[1].to(device)
+
+        for i in range(inputs.size(0)):
             if eval_count >= num_eval_samples:
                 break
-            inputs, labels = data[0].to(device), data[1].to(device)
-
-            for i in range(inputs.size(0)):
-                if eval_count >= num_eval_samples:
-                    break
             
-                with torch.no_grad():
-                    single_input = inputs[i].unsqueeze(0)
-                    output = model(single_input)
-                    _, predicted = torch.max(output, 1)
+            with torch.no_grad():
+                single_input = inputs[i].unsqueeze(0)
+                output = model(single_input)
+                _, predicted = torch.max(output, 1)
 
-                if predicted.item() != labels[i].item():
-                    continue
+            if predicted.item() != labels[i].item():
+                continue
 
-                image = inputs[i]
-                target_class = labels[i].item()
+            image = inputs[i]
+            target_class = labels[i].item()
 
-                model.eval()
-                # _ = model(image.unsqueeze(0))
-                if use_gradcam:
-                    heatmap = get_gradcam(model, image, target_class)
-                else:
-                    heatmap = get_cam(model, image, target_class)
+            model.eval()
+            # _ = model(image.unsqueeze(0))
+            if use_gradcam:
+                heatmap = get_gradcam(model, image, target_class)
+            else:
+                heatmap = get_cam(model, image, target_class)
 
-                try:
-                    scores = compute_deletion_curve(model, image, target_class, heatmap, num_steps=100, hidden_strategy=hidden_strategy)
-                    deletion_curves.append(scores)
-                    scores = compute_insertion_curve(model, image, target_class, heatmap, num_steps=100, hidden_strategy=hidden_strategy)
-                    insertion_curves.append(scores)
-                    eval_count += 1
-                except Exception as e:
-                    print(f"Error on sample {eval_count}: {e}")
-                    continue
-        all_scores = np.array(deletion_curves)
-        mean_curve = np.mean(all_scores, axis=0)
-        avg_auc = np.trapezoid(mean_curve, np.linspace(0, 1, len(mean_curve)))
-        print(f"Average Deletion AUC: {avg_auc:.4f}")
+            try:
+                scores = compute_deletion_curve(model, image, target_class, heatmap, num_steps=100, hidden_strategy=hidden_strategy)
+                deletion_curves.append(scores)
+                scores = compute_insertion_curve(model, image, target_class, heatmap, num_steps=100, hidden_strategy=hidden_strategy)
+                insertion_curves.append(scores)
+                eval_count += 1
+            except Exception as e:
+                print(f"Error on sample {eval_count}: {e}")
+                continue
+    all_scores = np.array(deletion_curves)
+    mean_curve = np.mean(all_scores, axis=0)
+    avg_auc = np.trapezoid(mean_curve, np.linspace(0, 1, len(mean_curve)))
+    print(f"Average Deletion AUC: {avg_auc:.4f}")
 
-        all_scores = np.array(insertion_curves)
-        mean_curve = np.mean(all_scores, axis=0)
-        avg_auc = np.trapezoid(mean_curve, np.linspace(0, 1, len(mean_curve)))
-        print(f"Average Insertion AUC: {avg_auc:.4f}")
+    all_scores = np.array(insertion_curves)
+    mean_curve = np.mean(all_scores, axis=0)
+    avg_auc = np.trapezoid(mean_curve, np.linspace(0, 1, len(mean_curve)))
+    print(f"Average Insertion AUC: {avg_auc:.4f}")
 
-        # 平均曲线
-        if deletion_curves and insertion_curves:
-            d_all = np.array(deletion_curves)
-            i_all = np.array(insertion_curves)
-            d_avg = np.mean(d_all, axis=0)
-            d_min, d_max = np.min(d_all, axis=0), np.max(d_all, axis=0)
-            i_avg = np.mean(i_all, axis=0)
-            i_min, i_max = np.min(i_all, axis=0), np.max(i_all, axis=0)
+    # 平均曲线
+    if deletion_curves and insertion_curves:
+        d_all = np.array(deletion_curves)
+        i_all = np.array(insertion_curves)
+        d_avg = np.mean(d_all, axis=0)
+        d_min, d_max = np.min(d_all, axis=0), np.max(d_all, axis=0)
+        i_avg = np.mean(i_all, axis=0)
+        i_min, i_max = np.min(i_all, axis=0), np.max(i_all, axis=0)
 
-            steps = np.linspace(0, 1, len(d_avg))
-            d_auc = np.trapezoid(d_avg, steps)
-            i_auc = np.trapezoid(i_avg, steps)
+        steps = np.linspace(0, 1, len(d_avg))
+        d_auc = np.trapezoid(d_avg, steps)
+        i_auc = np.trapezoid(i_avg, steps)
 
-            method_name = 'Grad-CAM' if use_gradcam else 'CAM'
-            color = 'red' if use_gradcam else 'blue'
+        method_name = 'Grad-CAM' if use_gradcam else 'CAM'
+        color = 'red' if use_gradcam else 'blue'
 
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-            plt.subplots_adjust(wspace=0.3)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        plt.subplots_adjust(wspace=0.3)
 
-            # Deletion Curve
-            ax1.plot(steps, d_avg, color=color, linewidth=2, label=f'{method_name} (AUC: {d_auc:.4f})')
-            ax1.fill_between(steps, d_min, d_max, color=color, alpha=0.15)
-            ax1.set_xlabel('Fraction of Pixels Masked')
-            ax1.set_ylabel('Target Class Probability')
-            ax1.set_title(f'Deletion Metric - {method_name}')
-            ax1.legend(loc='upper right')
-            ax1.grid(True, linestyle='--', alpha=0.6)
+        # Deletion Curve
+        ax1.plot(steps, d_avg, color=color, linewidth=2, label=f'{method_name} (AUC: {d_auc:.4f})')
+        ax1.fill_between(steps, d_min, d_max, color=color, alpha=0.15)
+        ax1.set_xlabel('Fraction of Pixels Masked')
+        ax1.set_ylabel('Target Class Probability')
+        ax1.set_title(f'Deletion Metric - {method_name}')
+        ax1.legend(loc='upper right')
+        ax1.grid(True, linestyle='--', alpha=0.6)
 
-            # Insertion Curve
-            ax2.plot(steps, i_avg, color='green', linewidth=2, label=f'{method_name} (AUC: {i_auc:.4f})')
-            ax2.fill_between(steps, i_min, i_max, color='green', alpha=0.15)
-            ax2.set_xlabel('Fraction of Pixels Inserted')
-            ax2.set_ylabel('Target Class Probability')
-            ax2.set_title(f'Insertion Metric - {method_name}')
-            ax2.legend(loc='lower right')
-            ax2.grid(True, linestyle='--', alpha=0.6)
+        # Insertion Curve
+        ax2.plot(steps, i_avg, color=color, linewidth=2, label=f'{method_name} (AUC: {i_auc:.4f})')
+        ax2.fill_between(steps, i_min, i_max, color=color, alpha=0.15)
+        ax2.set_xlabel('Fraction of Pixels Inserted')
+        ax2.set_ylabel('Target Class Probability')
+        ax2.set_title(f'Insertion Metric - {method_name}')
+        ax2.legend(loc='lower right')
+        ax2.grid(True, linestyle='--', alpha=0.6)
 
-            filename = f'results_{method_name.lower()}.png'
-            plt.savefig(filename, dpi=300, bbox_inches='tight')
-            print(f"Figures saved as {filename}")
-            # plt.show()
+        filename = f'results_{method_name.lower()}.png'
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+        print(f"Figures saved as {filename}")
+        # plt.show()
 
     # ==========================
     
@@ -368,9 +370,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--hidden_strategy',
         type=str,
-        choices=['zero', 'gray', 'mean'],
-        default='zero',
-        help='Hidden strategy for insertion curve: zero | gray | mean'
+        choices=['zero', 'gray', 'mean', 'none'],
+        default='none',
+        help='Hidden strategy for insertion curve: zero | gray | mean | none'
     )
     # =================================================
     # ===== [ADDED FOR FASTER-RCNN] =====
@@ -407,9 +409,9 @@ if __name__ == '__main__':
     # ===============================================
 
 
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --batch_size 64 --lr 0.005 --num_epochs 20 --save_path ./checkpoints/resnet_best.pth --vis cam --vis_num 10 --hidden_strategy zero
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --batch_size 64 --lr 0.005 --num_epochs 20 --save_path ./checkpoints/resnet_best.pth --vis cam --vis_num 10 --hidden_strategy gray
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --batch_size 64 --lr 0.005 --num_epochs 20 --save_path ./checkpoints/resnet_best.pth --vis cam --vis_num 10 --hidden_strategy mean
+# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --save_path ./checkpoints/resnet_best.pth --vis cam --hidden_strategy zero
+# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --save_path ./checkpoints/resnet_best.pth --vis cam --hidden_strategy gray
+# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --save_path ./checkpoints/resnet_best.pth --vis cam --hidden_strategy mean
 
 
 # D:\Anaconda_Envs\torch_env\python.exe main.py --run=train --model=cnn --optimizer=sgd --scheduler=cosine
@@ -419,7 +421,8 @@ if __name__ == '__main__':
 # D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --batch_size 64 --lr 0.005 --num_epochs 20 --save_path ./checkpoints/vgg_best_new.pth --log_dir ./logs_for_VGG
 # D:\Anaconda_Envs\torch_env\python.exe main.py --mode train --batch_size 64 --lr 0.005 --num_epochs 20 --save_path ./checkpoints/resnet_best.pth --log_dir ./logs_for_ResNet
 # D:\Anaconda_Envs\torch_env\python.exe main.py --mode train --batch_size 64 --lr 0.005 --num_epochs 20 --save_path ./checkpoints/resnext_best.pth --log_dir ./logs_for_ResNext
-# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --batch_size 64 --lr 0.005 --num_epochs 20 --save_path ./checkpoints/resnet_best.pth --vis cam --vis_num 10
+
+# D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --save_path ./checkpoints/resnet_best.pth --vis cam --vis_num 10
 
 # test faster-rcnn
 # D:\Anaconda_Envs\torch_env\python.exe main.py --mode test --det_vis --det_img test.png
